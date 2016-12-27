@@ -1,4 +1,4 @@
-[![build-status](https://img.shields.io/codeship/c3b5bbf0-a1d3-0134-7e97-769a18eb10ba.svg)](https://app.codeship.com/projects/189874)
-[![test-coverage](https://img.shields.io/codecov/c/github/valmynd/spatialhash.svg)](https://codecov.io/gh/valmynd/spatialhash)
+[![build-status](https://img.shields.io/codeship/dbd86130-aeb3-0134-ad8f-460e9ecbd76e.svg)](https://app.codeship.com/projects/192732)
+[![test-coverage](https://img.shields.io/codecov/c/github/valmynd/solver.svg)](https://codecov.io/gh/valmynd/solver)
 
 # Set of Theorem Solver Algorithms (WIP)
