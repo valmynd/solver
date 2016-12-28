@@ -12,7 +12,7 @@
  * @param {int} chosen
  * @returns {int[][]}
  */
-function _simplify(cnf, chosen) {
+export function _simplify(cnf, chosen) {
   let new_cnf = []
   for (let clause of cnf) {
     let new_clause = []
@@ -50,6 +50,7 @@ let step = 0
  */
 export function dpll(cnf) {
   console.log(++step, cnf)
+  if(step > 1000) return undefined
   if (cnf.length === 0) return true
   for (let clause of cnf) {
     if (clause.length === 0) return false

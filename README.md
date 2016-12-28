@@ -2,11 +2,3 @@
 [![test-coverage](https://img.shields.io/codecov/c/github/valmynd/solver.svg)](https://codecov.io/gh/valmynd/solver)
 
 # Set of Theorem Solver Algorithms (WIP)
-
-
-# Definitions
-
-| Term  | Definition | Example |
-| -- | -- | -- |
-| conflicting clause | a clause which is unsatisfiable for the current value assignment (all atoms evaluate to false) | |
-| unit clause | ... | |

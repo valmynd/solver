@@ -1,25 +1,4 @@
-/**
- * @param {int[][]} cnf
- * @param {int[]} assignment
- * @returns {int[][]}
- */
-function _apply(cnf, assignment) {
-  let new_cnf = []
-  for (let clause of cnf) {
-    let new_clause = []
-    let skip = false
-    for (let atom of clause) {
-      if (assignment.includes(atom)) {
-        skip = true
-        break
-      } else if (!assignment.includes(-atom)) {
-        new_clause.push(atom)
-      }
-    }
-    if (!skip) new_cnf.push(new_clause)
-  }
-  return new_cnf
-}
+import {_simplify} from "./dpll1";
 
 /**
  * Simple Variant of DPLL that returns a model when the formula is satisfiable
@@ -34,7 +13,7 @@ function _apply(cnf, assignment) {
  */
 export function dpll(cnf, assignment = []) {
   if (assignment.length > 0)
-    cnf = _apply(cnf, assignment)
+    cnf = _simplify(cnf, assignment[assignment.length - 1])
   if (cnf.length === 0) return assignment
   for (let clause of cnf) {
     if (clause.length === 0) return null
@@ -42,4 +21,4 @@ export function dpll(cnf, assignment = []) {
   }
   let atom = cnf[0][0]
   return dpll(cnf, assignment.concat([atom])) || dpll(cnf, assignment.concat([-atom]))
-}/**/
+}
