@@ -81,7 +81,7 @@ export function cnf(syntax_tree, variables = Array.from(_collect_variables(synta
   let v0 = _substitute(syntax_tree, variables, replacements)
   let cnf = [[v0]]
   console.log("REPL", str(map2obj(replacements)))
-  for (let [v, formula] of replacements.entries()) {
+  for (let [v, formula] of replacements) {
     //console.log("push", v, str(formula))
     console.log("PRE-CLEANUP", eq(v, formula))
     cnf = [...cnf, ..._cleanup(eq(v, formula))]

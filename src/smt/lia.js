@@ -59,44 +59,44 @@ let sols = []
  * @param {Array} [L] set of inequalities
  * @param {Array} [Eq] set of equalities
  */
-function lia(L = [], Eq = []) {
-  if (some_c_positive(L)) return
-  if (L.length == 0) {
-    sols = [...sols, check1(Eq)]
-    return
-  }
-  let c = oracle(L)
-  if (no_constant_positive_linear_combination(L, Eq)) {
-    sols = [...sols, checkInfinity(Eq)]
-    return
-  }
-  let sum = c // ?
-  if (c > 0) return
-  let k = choose_k(L, Eq), m, d = [], s
-  for (let v = ceil(m * c / d[k]); v <= 0; v++) {
-    // create a substitution σ from μL_k(x_1,...,x_n) = v
-    // if there is no possible substitution then continue to next iteration
-    // remove L_k from L
-    L.splice(k, 1)
-    // apply σ to L
-    // call lia(L, Eq ∪ {σ})
-    lia(L, [...Eq, s])
-  }
-}
-let a, b, c, x, y
+/*function lia(L = [], Eq = []) {
+ if (some_c_positive(L)) return
+ if (L.length == 0) {
+ sols = [...sols, check1(Eq)]
+ return
+ }
+ let c = oracle(L)
+ if (no_constant_positive_linear_combination(L, Eq)) {
+ sols = [...sols, checkInfinity(Eq)]
+ return
+ }
+ let sum = c // ?
+ if (c > 0) return
+ let k = choose_k(L, Eq), m, d = [], s
+ for (let v = ceil(m * c / d[k]); v <= 0; v++) {
+ // create a substitution σ from μL_k(x_1,...,x_n) = v
+ // if there is no possible substitution then continue to next iteration
+ // remove L_k from L
+ L.splice(k, 1)
+ // apply σ to L
+ // call lia(L, Eq ∪ {σ})
+ lia(L, [...Eq, s])
+ }
+ }
+ let a, b, c, x, y
 
-x = [
-  [0 <= -b + x],
-  [0 <= -c + x],
-  [0 <= b - x, 0 <= c - x],
-  [!0 <= a - x],
-  [0 <= -a + y],
-  [0 <= -c + y],
-  [0 <= a - y, 0 <= c - y],
-  [!0 <= b - y],
-  [0 <= -a + z],
-  [0 <= -b + z],
-  [0 <= a - z, 0 <= b - z],
-  [!0 <= c - z]
-]
+ x = [
+ [0 <= -b + x],
+ [0 <= -c + x],
+ [0 <= b - x, 0 <= c - x],
+ [!0 <= a - x],
+ [0 <= -a + y],
+ [0 <= -c + y],
+ [0 <= a - y, 0 <= c - y],
+ [!0 <= b - y],
+ [0 <= -a + z],
+ [0 <= -b + z],
+ [0 <= a - z, 0 <= b - z],
+ [!0 <= c - z]
+ ]*/
 

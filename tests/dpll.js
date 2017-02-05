@@ -1,5 +1,5 @@
 import test from "ava";
-import {satisfiable, solve} from "../dist/dpll_simple";
+import {satisfiable, solve} from "../dist/sat/dpll_simple";
 
 
 test('satisfiable(1) works correctly', t => {
