@@ -2,7 +2,17 @@
 // - two types of assignments
 //    1. propagation: when the algorithm can detect that a certain variable must be set to a certain value
 //    2. assumption: variable must be set to a certain value to be able to compute further (synonym: decide)
-// DPLL divides the problem into sub-problems, one where the latest assumption holds and one where it does not
+// - mathematical notation:
+//   - b : V → {0,1}             // b...Assignment, V... Variable, {0,1}... Value Range (true, false)
+//   - b |= F ≡ val(F, b) = 1    // b|=F... is a Model of F, F... Formula, val(F,b)... Value of F when b is given
+//   - Mod(F) = {b | b |= F}     // Mod(F)... Collection of Models of the Formula
+// - a formula is satisfiable iff Mod(F) != Ø  // Ø... empty set
+// - two formulas F and G are equivalent iff Mod(F) = Mod(G)
+//    - for every formula F there is an equivalent formula G in Conjunctive Normal Form (CNF)
+//    - for every formula F there is an equivalent formula G' in Disjunctive Normal Form (DNF)
+// - F and G are equisatisfiable iff Mod(F) != Ø ≡ Mod(G) != Ø
+//    - via Tseitin-Transformation, every formula F can be transformed into an equisatisfiable formula G
+// - DPLL divides the problem into sub-problems, one where the latest assumption holds and one where it does not
 
 /**
  * remove clauses in cnf where chosen is positive
@@ -63,7 +73,7 @@ let step = 0
  * @returns {boolean}
  */
 export function satisfiable(cnf) {
-  console.log(++step, cnf)
+  //console.log(++step, cnf)
   if (cnf.length === 0) return true
   for (let clause of cnf) {
     if (clause.length === 0) return false

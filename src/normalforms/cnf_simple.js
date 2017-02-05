@@ -48,12 +48,10 @@ export function or(...args) {
       throw "Invalid argument for or(): " + arg
     }
   }
-  if (integers.length > 0)
-    arrays = [integers, ...arrays]
-  if (arrays.length < 2)
-    return arrays
+  if (arrays.length == 0) return (integers.length === 0) ? [] : [integers]
+  else if (integers.length > 0) arrays = [[integers], ...arrays]
   let [a, b, ...more] = arrays
-  console.log("args", str(args), "arrays", str(arrays), "abmore", str(a), str(b), str(more))
+  //console.log("args", str(args), "arrays", str(arrays), "abmore", str(a), str(b), str(more))
   let cnf = []
   for (let clause_a of a) {
     for (let clause_b of b) {
