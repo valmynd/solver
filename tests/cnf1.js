@@ -31,7 +31,7 @@ test('not() works correctly', t => {
 })
 
 test('eq() works correctly', t => {
-  console.log(eq(3, or(1, 2)))
+  //console.log(eq(3, or(1, 2)))
   //t.deepEqual(eq(3, or(1, 2)), [[-3, 1, 2], [3, -1], [3, -2]])
   t.deepEqual(eq(3, or(1, 2)), [[-3, 1], [-3, 2], [3, -1], [3, -2]]) // FIXME: should be simplified as above
 })

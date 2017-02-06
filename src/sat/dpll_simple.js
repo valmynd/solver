@@ -85,11 +85,8 @@ export function satisfiable(cnf) {
 
 /**
  * Simple Variant of DPLL that returns a model when the formula is satisfiable
- * Input:
- *  - formula in Conjunctive Normal Form (CNF) with each variable being represented as an integer
- *  - (internal) array of true-assigned variables
- * Output:
- *  - model represented as an array of true-assigned variables or null if unsatisfiable
+ * Input: formula in Conjunctive Normal Form (CNF) with each variable being represented as an integer
+ * Output: model represented as an array of true-assigned variables or null if unsatisfiable
  * @param {int[][]} cnf
  * @param {int[]} [assignment]
  * @returns {int[]|null}

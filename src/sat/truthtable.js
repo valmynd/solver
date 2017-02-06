@@ -1,9 +1,6 @@
 // TODO: read Towards Next Generation Sequential and Parallel SAT Solvers
 // TODO: read Equisatisfiable SAT Encodings of Arithmetical Operations
 
-const _fac = x => (x == 0) ? 1 : x * _fac(x - 1)
-const str = json => JSON.stringify(json)
-
 /**
  * @param {int[][]} cnf
  * @returns {int[]}
@@ -55,19 +52,13 @@ function _val(cnf, variables, values) {
 }
 
 /**
- * Generate Ingredients for a Truth table
- * @example
- * let cnf = [[1, 2, 3]], variables = _collect_variables(cnf), {combinations, values} = _table(cnf, variables)
- * let rows = combinations.map((combination,i) => [...combination, values[i]])
- * let actual_table_with_header = [[...variables, cnf], ...rows]
+ * Generate the Rows of a Truth table
  * @param {int[][]} cnf
- * @param {int[]} variables
- * @returns {{combinations: int[][], values: int[]}}
+ * @param {int[]} [variables]
+ * @returns {int[][]}
  */
-export function _table(cnf, variables) {
-  let combinations = _generate_combinations(variables),
-    values = combinations.map(combination => _val(cnf, variables, combination))
-  return {combinations, values}
+export function _rows(cnf, variables = _collect_variables(cnf)) {
+  return _generate_combinations(variables).map(combination => [...combination, _val(cnf, variables, combination)])
 }
 
 /**
@@ -87,22 +78,49 @@ export function equivalent(cnf1, cnf2) {
 }
 
 /**
+ * Returns one model when the formula is satisfiable
+ * Input: formula in Conjunctive Normal Form (CNF) with each variable being represented as an integer
+ * Output: model represented as an array of true-assigned variables or null if unsatisfiable
+ * @param {int[][]} cnf
+ * @returns {int[]}
+ */
+export function solve(cnf) {
+  let variables = _collect_variables(cnf), rows = _rows(cnf, variables)
+  for (let row of rows) // if model, return array of true-assigned variables
+    if (row.pop() === 1) return variables.filter((_, i) => row[i] === 1)
+  return null
+}
+
+/**
+ * Returns all models when the formula is satisfiable
+ * Input: formula in Conjunctive Normal Form (CNF) with each variable being represented as an integer
+ * Output: array of models represented as arrays of true-assigned variables (empty if unsatisfiable)
+ * @param {int[][]} cnf
+ * @returns {int[][]}
+ */
+export function solveAll(cnf) {
+  let variables = _collect_variables(cnf), rows = _rows(cnf, variables)
+  return rows.filter(row => row.pop() === 1).map(row => variables.filter((_, i) => row[i] === 1))
+}
+
+/**
+ * Determine whether the formula is satisfiable
+ * @param {int[][]} cnf
+ * @returns {boolean}
+ */
+export function satisfiable(cnf) {
+  return solve(cnf) !== null
+}
+
+/**
  * Checks two formulas for Equisatisfiability
- * Two Formulas F and G are equisatisfiable iff ( Mod(F) != Ø iff Mod(G) != Ø and vice versa )
+ * Two Formulas F and G are equisatisfiable when ...
+ *   ... either (1) Mod(F) = Ø ⇔ Mod(G) = Ø
+ *   ... or     (2) Mod(F) ≠ Ø ⇔ Mod(G) ≠ Ø
  * @param {int[][]} cnf1
  * @param {int[][]} cnf2
  * @returns {boolean}
  */
 export function equisatisfiable(cnf1, cnf2) {
-  let variables1 = _collect_variables(cnf1), variables2 = _collect_variables(cnf2)
-  let variables_combined = [...new Set([...variables1, ...variables2])].sort()
-  let combinations = _generate_combinations(variables_combined)
-  let values1 = combinations.map(combination => _val(cnf1, variables_combined, combination))
-  let values2 = combinations.map(combination => _val(cnf2, variables_combined, combination))
-  // Mod(F) != Ø iff Mod(G) != Ø
-  console.log("FUN", variables1, variables2, variables_combined)
-  return values1.toString() === values2.toString() // FIXME
+  return satisfiable(cnf1) === satisfiable(cnf2)
 }
-
-
-
