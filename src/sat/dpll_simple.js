@@ -74,13 +74,13 @@ let step = 0
  */
 export function satisfiable(cnf) {
   //console.log(++step, cnf)
-  if (cnf.length === 0) return true
+  if (cnf.length === 0) return true // SAT
   for (let clause of cnf) {
-    if (clause.length === 0) return false
-    if (clause.length === 1) return satisfiable(_simplify(cnf, clause[0]))
+    if (clause.length === 0) return false // UNSAT
+    if (clause.length === 1) return satisfiable(_simplify(cnf, clause[0])) // propagation
   }
   let atom = cnf[0][0]
-  return satisfiable(_simplify(cnf, atom)) || satisfiable(_simplify(cnf, -atom))
+  return satisfiable(_simplify(cnf, atom)) || satisfiable(_simplify(cnf, -atom)) // decide
 }
 
 /**
