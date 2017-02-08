@@ -23,38 +23,9 @@
  * @returns {int[][]}
  */
 export function _simplify(cnf, chosen) {
-  let new_cnf = []
-  for (let clause of cnf) {
-    let new_clause = []
-    let skip = false
-    for (let atom of clause) {
-      if (atom === chosen) {
-        skip = true
-        break
-      } else if (atom !== -chosen) {
-        new_clause.push(atom)
-      }
-    }
-    if (!skip) new_cnf.push(new_clause)
-  }
-  return new_cnf
+  return cnf.filter(clause => !clause.includes(chosen)).map(clause => clause.filter(atom => atom !== -chosen))
 }
 
-export function _simplify2(cnf, chosen) {
-  for (let c in cnf) {
-    for (let a in cnf[c]) {
-      if (cnf[c][a] === chosen) {
-        cnf[c] = undefined
-      } else if (cnf[c][a] !== -chosen) {
-        cnf[c][a] = undefined
-      }
-    }
-  }
-  return cnf
-}
-
-
-let step = 0
 /**
  * Simple Variant of DPLL that uses variable-elimination to determine whether the formula is satisfiable
  * Algorithm:
@@ -63,7 +34,7 @@ let step = 0
  *  if cnf contains a unit clause, return sat(simplify(cnf, literal))
  *  v <- choose a variable in cnf
  *  if sat(simplify(cnf, v)) is true, return true
- *  else return sat(simplify(cnf, -v)
+ *  else return sat(simplify(cnf, -v))
  * Source and Explanation:
  *  https://www.youtube.com/watch?v=ENHKXZg-a4c (Lecture by Wheeler Ruml, English)
  *  https://www.youtube.com/watch?v=keILzTb0Soo (Tutorial by Morpheus Tutorials, German)
@@ -73,14 +44,12 @@ let step = 0
  * @returns {boolean}
  */
 export function satisfiable(cnf) {
-  //console.log(++step, cnf)
   if (cnf.length === 0) return true // SAT
   for (let clause of cnf) {
     if (clause.length === 0) return false // UNSAT
     if (clause.length === 1) return satisfiable(_simplify(cnf, clause[0])) // propagation
   }
-  let atom = cnf[0][0]
-  return satisfiable(_simplify(cnf, atom)) || satisfiable(_simplify(cnf, -atom)) // decide
+  return satisfiable(_simplify(cnf, cnf[0][0])) || satisfiable(_simplify(cnf, -cnf[0][0])) // decide || backtrack
 }
 
 /**
