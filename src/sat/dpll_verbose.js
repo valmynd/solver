@@ -21,22 +21,22 @@ const abs = Math.abs
  * @returns {boolean}
  */
 export function _satisfied(clause, assignment) {
-  for (let atom of clause) {
-    let value = assignment.get(abs(atom))
-    if (atom > 0 && value === 1) return true
-    if (atom < 0 && value === 0) return true
-  }
-  return false
+  return _conflicting(clause, assignment) === null
 }
 
 /**
- * Determine whether a clause is conflicting, given an assignment
+ * If the clause is not satisfied, return the conflicting literal of the assignment, otherwise null
  * @param {int[]} clause
  * @param {Map} assignment
- * @returns {boolean}
+ * @returns {int|null}
  */
 export function _conflicting(clause, assignment) {
-  return _satisfied(clause, assignment) === false
+  for (let atom of clause) {
+    let value = assignment.get(abs(atom))
+    if (atom > 0 && value === 1) return atom
+    if (atom < 0 && value === 0) return atom
+  }
+  return null
 }
 
 /**
@@ -94,7 +94,7 @@ export function _unresolved(clause, assignment) {
 export function solve(cnf, assignment = new Map(), stack = _collect_variables(cnf)) {
   let conflict_clause = null, unit_clause = null, unit_literal = null
   for (let clause of cnf) {
-    if (_conflicting(clause, assignment)) {
+    if (!_satisfied(clause, assignment)) {
       conflict_clause = clause
       break
     } else if (unit_clause === null) {
