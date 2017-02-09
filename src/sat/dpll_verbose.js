@@ -48,9 +48,14 @@ export function _conflicting(clause, assignment) {
 export function _unit(clause, assignment) {
   let unit_literal = null
   for (let atom of clause) {
-    if (assignment.get(abs(atom)) === undefined) {
+    let value = assignment.get(abs(atom))
+    if (value === undefined) {
       if (unit_literal !== null) return null // more than one unassigned variable in this clause
       else unit_literal = atom
+    } else if (value === 0) {
+      if (atom > 0) return null
+    } else if (value === 1) {
+      if (atom < 0) return null
     }
   }
   return unit_literal

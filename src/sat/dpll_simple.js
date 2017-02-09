@@ -6,11 +6,11 @@
 //   - b : V → {0,1}             // b...Assignment, V... Variable, {0,1}... Value Range (true, false)
 //   - b |= F ≡ val(F, b) = 1    // b|=F... is a Model of F, F... Formula, val(F,b)... Value of F when b is given
 //   - Mod(F) = {b | b |= F}     // Mod(F)... Collection of Models of the Formula
-// - a formula is satisfiable iff Mod(F) != Ø  // Ø... empty set
+// - a formula is satisfiable iff Mod(F) ≠ Ø  // Ø... empty set
 // - two formulas F and G are equivalent iff Mod(F) = Mod(G) // iff... if and only if
 //    - for every formula F there is an equivalent formula G in Conjunctive Normal Form (CNF)
 //    - for every formula F there is an equivalent formula G' in Disjunctive Normal Form (DNF)
-// - F and G are equisatisfiable iff ( Mod(F) != Ø iff Mod(G) != Ø )
+// - F and G are equisatisfiable iff ( Mod(F) ≠ Ø iff Mod(G) ≠ Ø )
 //    - via Tseitin-Transformation, every formula F can be transformed into an equisatisfiable formula G
 // - DPLL divides the problem into sub-problems, one where the latest assumption holds and one where it does not
 
