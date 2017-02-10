@@ -69,3 +69,4 @@ export function solve(cnf, assignment = []) {
   let atom = cnf[0][0]
   return solve(_simplify(cnf, atom), [...assignment, atom]) || solve(_simplify(cnf, -atom), [...assignment, -atom])
 }
+

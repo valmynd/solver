@@ -1,16 +1,17 @@
 import {_simplify} from "./dpll_simple"
-import {_unit, _conflicting} from "./dpll_verbose"
+import {_unit, _conflicting, _map2array} from "./dpll_verbose"
 import {_collect_variables} from "./truthtable"
 const abs = Math.abs
 const max = Math.max
 const min = Math.min
+const empty = new Set()
 
 /**
  * @param {int[][]} cnf
  * @param {Map} assignment
  * @returns {{clause:int[],literal:int}|null}
  */
-function _find_unit(cnf, assignment) {
+export function _find_unit(cnf, assignment) {
   for (let clause of cnf) {
     let literal = _unit(clause, assignment)
     if (literal !== null) return {clause, literal}
@@ -23,14 +24,14 @@ function _find_unit(cnf, assignment) {
  * @param {Map} assignment
  * @returns {int[]}
  */
-function _find_conflict(cnf, assignment) {
+export function _find_conflict(cnf, assignment) {
   for (let clause of cnf) {
     if (_conflicting(clause, assignment)) return clause
   }
   return null
 }
 
-class ImplicationGraph {
+export class ImplicationGraph {
   constructor() {
     this.nodes = new Map() // mapping of nodes to the level they where set
     this.edges = new Map() // map nodes to their predecessors
@@ -44,13 +45,13 @@ class ImplicationGraph {
   addEdge(variableFrom, valueFrom, variableTo, valueTo) {
     let key1 = (valueFrom === 0) ? -variableFrom : variableFrom
     let key2 = (valueTo === 0) ? -variableTo : variableTo
-    if (this.edges.has(key2)) this.edges.get(key2).push(key1)
-    else this.edges.set(key2, [key1])
+    if (this.edges.has(key2)) this.edges.get(key2).add(key1)
+    else this.edges.set(key2, new Set().add(key1))
   }
 
   getPredecessors(variable, value) {
     let key = (value === 0) ? -variable : variable, predecessors = this.edges.get(key)
-    return (predecessors === undefined) ? [] : predecessors
+    return (predecessors === undefined) ? empty : predecessors
   }
 
   cut(variable) {
@@ -81,7 +82,7 @@ class ImplicationGraph {
  */
 export function _unit_prop(cnf, assignment, implication_graph, level) {
   let unit, conflict_clause
-  while (unit = _find_unit(cnf)) {
+  while (unit = _find_unit(cnf, assignment)) {
     let l = unit.literal, v = abs(l), a = (l < 0) ? 0 : 1
     assignment.set(v, a)
     implication_graph.addNode(v, a, level)
@@ -89,9 +90,9 @@ export function _unit_prop(cnf, assignment, implication_graph, level) {
       if (atom !== l) implication_graph.addEdge(abs(atom), assignment.get(abs(atom)), v, a)
     }
     if (conflict_clause = _find_conflict(cnf, assignment)) {
-      implication_graph.addNode(v, -a, level)
+      implication_graph.addNode(v, (a === 1 ? 0 : 1), level)
       for (let atom of conflict_clause) {
-        if (atom !== l) implication_graph.addEdge(abs(atom), assignment.get(abs(atom)), v, -a)
+        if (atom !== l) implication_graph.addEdge(abs(atom), assignment.get(abs(atom)), v, (a === 1 ? 0 : 1))
       }
       return v // CONFLICT
     }
@@ -131,11 +132,11 @@ export function solve(cnf) {
   let unassigned_variables = _collect_variables(cnf)
   while (unassigned_variables.length > 0 /*φ[θ] ≠ Ø*/) {
     level++
-    let v = unassigned_variables.shift(), a = 1 // a could also set it to 0
+    let v = unassigned_variables.shift(), a = 1 // a could also be set to 0
     assignment.set(v, a)
     implication_graph.addNode(v, a, level)
     while (conflict = _unit_prop(cnf, assignment, implication_graph, level)) {
-      // determine cut in G and conflict clause K (terminology is a bit misleading here, K != conflict.clause)
+      // determine cut in G and conflict clause K (terminology is a bit misleading here, K...to-be-learned clause)
       let new_clause = implication_graph.cut(conflict)
       let max_level = max(...new_clause.map(node => implication_graph.nodes.get(node)))
       if (max_level === 0) return null // UNSAT
@@ -153,6 +154,7 @@ export function solve(cnf) {
     }
     level++
   }
+  return _map2array(assignment)
 }
 
 export function satisfiable(cnf) {
