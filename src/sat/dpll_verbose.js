@@ -21,22 +21,25 @@ const abs = Math.abs
  * @returns {boolean}
  */
 export function _satisfied(clause, assignment) {
-  return _conflicting(clause, assignment) === null
+  for (let atom of clause) {
+    let value = assignment.get(abs(atom))
+    if (value === 1) {
+      if (atom > 0) return true
+    } else if (value === 0) {
+      if (atom < 0) return true
+    }
+  }
+  return false
 }
 
 /**
- * If the clause is not satisfied, return the conflicting literal of the assignment, otherwise null
+ * Determine whether a clause is conflicting, given an assignment
  * @param {int[]} clause
  * @param {Map} assignment
- * @returns {int|null}
+ * @returns {boolean}
  */
 export function _conflicting(clause, assignment) {
-  for (let atom of clause) {
-    let value = assignment.get(abs(atom))
-    if (atom > 0 && value === 1) return atom
-    if (atom < 0 && value === 0) return atom
-  }
-  return null
+  return _satisfied(clause, assignment) === false
 }
 
 /**
@@ -53,9 +56,9 @@ export function _unit(clause, assignment) {
       if (unit_literal !== null) return null // more than one unassigned variable in this clause
       else unit_literal = atom
     } else if (value === 0) {
-      if (atom > 0) return null
-    } else if (value === 1) {
       if (atom < 0) return null
+    } else if (value === 1) {
+      if (atom > 0) return null
     }
   }
   return unit_literal
@@ -94,16 +97,18 @@ export function _unresolved(clause, assignment) {
 export function solve(cnf, assignment = new Map(), stack = _collect_variables(cnf)) {
   let conflict_clause = null, unit_clause = null, unit_literal = null
   for (let clause of cnf) {
-    if (!_satisfied(clause, assignment)) {
+    if (_conflicting(clause, assignment)) {
       conflict_clause = clause
-      break
     } else if (unit_clause === null) {
-      unit_literal = _unit(clause, assignment)
-      if (unit_literal !== null) unit_clause = clause
+      let tmp = _unit(clause, assignment)
+      if (tmp !== null) {
+        unit_literal = tmp
+        unit_clause = clause
+      }
     }
   }
   if (conflict_clause === null) { // (success)
-    return [...assignment.keys()].filter(k => assignment.get(k) === 1) // SAT
+    return [...assignment.keys()].map(k => (assignment.get(k) === 1) ? k : -k) // SAT
   } else {
     if (unit_clause !== null) { // (propagate)
       return solve(cnf, assignment.set(unit_literal, 1), stack) // could also set it to 0

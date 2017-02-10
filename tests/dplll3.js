@@ -22,5 +22,5 @@ test('satisfiable() works correctly', t => {
 })
 
 test('solve() works correctly', t => {
-  t.deepEqual(solve([[1, 2, 3], [-2, 3], [1, -3]]), [1]) // TODO: check if [1] is actually a model
+  t.deepEqual(solve([[1, 2, 3], [-2, 3], [1, -3]]), [-3, -2, 1])
 })

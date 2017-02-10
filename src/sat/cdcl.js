@@ -3,7 +3,7 @@ import {_unit, _conflicting} from "./dpll_verbose"
 import {_collect_variables} from "./truthtable"
 const abs = Math.abs
 const max = Math.max
-
+const min = Math.min
 
 /**
  * @param {int[][]} cnf
@@ -21,12 +21,11 @@ function _find_unit(cnf, assignment) {
 /**
  * @param {int[][]} cnf
  * @param {Map} assignment
- * @returns {{clause:int[],literal:int}|null}
+ * @returns {int[]}
  */
 function _find_conflict(cnf, assignment) {
   for (let clause of cnf) {
-    let literal = _conflicting(clause, assignment)
-    if (literal !== null) return {clause, literal}
+    if (_conflicting(clause, assignment)) return clause
   }
   return null
 }
@@ -34,7 +33,7 @@ function _find_conflict(cnf, assignment) {
 class ImplicationGraph {
   constructor() {
     this.nodes = new Map() // mapping of nodes to the level they where set
-    this.edges = new Map() // map nodes to their incoming nodes
+    this.edges = new Map() // map nodes to their predecessors
   }
 
   addNode(variable, value, level) {
@@ -49,38 +48,28 @@ class ImplicationGraph {
     else this.edges.set(key2, [key1])
   }
 
+  getPredecessors(variable, value) {
+    let key = (value === 0) ? -variable : variable, predecessors = this.edges.get(key)
+    return (predecessors === undefined) ? [] : predecessors
+  }
+
   cut(variable) {
-    let incomingByLevel = new Map()
-    if (this.edges.has(variable)) {
-      for (let incoming of this.edges.get(variable)) {
-        let level = this.nodes.get(incoming)
-        if (incomingByLevel.has(level)) incomingByLevel.get(level).add(incoming)
-        else incomingByLevel.set(level, new Set())
-      }
-    }
-    if (this.edges.has(-variable)) {
-      for (let v of this.edges.get(-variable)) {
-        let level = this.nodes.get(v)
-        if (incomingByLevel.has(level)) incomingByLevel.get(level).add(v)
-        else incomingByLevel.set(level, new Set())
-      }
-    }
-    if (incomingByLevel.size === 0) return null
-    let maxLevel = max(...incomingByLevel.keys())
-    return incomingByLevel.get(maxLevel)
+    // maybe navigating back to a node that is common on both paths is necessary?
+    // e.g. conflict-node -5 has one incoming edge from -4, but -4 is no predecessors of +5
+    return [...new Set([...this.getPredecessors(variable, 0), ...this.getPredecessors(variable, 1)])]
   }
 }
 
 /**
  * If there is a Unit Clause, propagate it's literal and check if that leads to a conflict
- * If propagation leads to a conflict, return the literal of the Unit Clause, otherwise return null
+ * If propagation leads to a conflict, return the conflicting variable, otherwise return null
  * Algorithm:
  * UnitPropagation(Formula φ, Assignment θ, implication-graph G, level d)
  *  while φ[θ] contains unit-clauses do
  *    let K = (l) the first unit-clause in φ[θ]                                      // K... unit clause containing l
  *    is l = ¬x, then set a := 0, otherwise a := 1                                   // l... unit literal
  *    θ := θ ∪ {x = a}
- *    let K = (l ∨ l_1 ∨ ... ∨ l_k) the clause in φ (without applied assignment)    // K from above but without l
+ *    let K = (l ∨ l_1 ∨ ... ∨ l_k) the clause in φ (without applied assignment)    // (K without variable-elimination)
  *    add node (x=a) to G and set mark(x=a) = d
  *    add vertices (u,(x=a)) to G, provided that u falsifies l_i, 1 ≤ i ≤ k
  *  if θ |≠ φ return CONFLICT
@@ -88,10 +77,10 @@ class ImplicationGraph {
  * @param {Map} assignment
  * @param {ImplicationGraph} implication_graph
  * @param {int} level
- * @returns {{clause:int[],literal:int}|null}
+ * @returns {int|null}
  */
 export function _unit_prop(cnf, assignment, implication_graph, level) {
-  let unit, conflict
+  let unit, conflict_clause
   while (unit = _find_unit(cnf)) {
     let l = unit.literal, v = abs(l), a = (l < 0) ? 0 : 1
     assignment.set(v, a)
@@ -99,12 +88,12 @@ export function _unit_prop(cnf, assignment, implication_graph, level) {
     for (let atom of unit.clause) {
       if (atom !== l) implication_graph.addEdge(abs(atom), assignment.get(abs(atom)), v, a)
     }
-    if (conflict = _find_conflict(cnf, assignment)) {
+    if (conflict_clause = _find_conflict(cnf, assignment)) {
       implication_graph.addNode(v, -a, level)
-      for (let atom of conflict.clause) {
-        if (atom !== conflict.literal) implication_graph.addEdge(abs(atom), assignment.get(abs(atom)), v, -a)
+      for (let atom of conflict_clause) {
+        if (atom !== l) implication_graph.addEdge(abs(atom), assignment.get(abs(atom)), v, -a)
       }
-      return conflict // CONFLICT
+      return v // CONFLICT
     }
   }
   return null // NO CONFLICT
@@ -121,14 +110,14 @@ export function _unit_prop(cnf, assignment, implication_graph, level) {
  *        d++
  *        set next Variable v to Value a (decide between 0 and 1) and update θ
  *        add node (v=a) to G and set mark(v=a) = d
- *        while UnitPropagation(φ,θ,G,d) returns CONFLICT do
- *            determine cut in G and conflict clause K
- *            {u_1...u_n} ... vertices that falsify l_i, 1 ≤ i ≤ k
- *            b = max{mark(u_i) | 1 ≤ i ≤ k}
+ *        while UnitPropagation(φ,θ,G,d) returns CONFLICT do          // _unit_prop() returns conflicting variable
+ *            determine cut in G and conflict clause K                // better call it to-be-learned clause or sth.
+ *            let {u_1...u_k} = nodes that cause the conflict
+ *            b = max{mark(u_i) | 1 ≤ i ≤ k}                          // determine max level of conflict-causing nodes
  *            if b == 0 return UNSAT
  *            else
- *                remove all u from V and θ with mark(u) ≥ b
- *                set φ := φ ∪ {K}, d--
+ *                remove all u from V and θ with mark(u) ≥ b          // delete nodes with level >= b
+ *                set φ := φ ∪ {K}, d--                               // add learned clause to cnf; level--
  *        d++
  *    return SAT
  * Input: formula in Conjunctive Normal Form (CNF) with each variable being represented as an integer
@@ -146,13 +135,20 @@ export function solve(cnf) {
     assignment.set(v, a)
     implication_graph.addNode(v, a, level)
     while (conflict = _unit_prop(cnf, assignment, implication_graph, level)) {
-      // determine cut in G and conflict clause K
-      let cut = implication_graph.cut(conflict.literal)
-      // todo: {u_1...u_n} ... vertices that falsify l_i, 1 ≤ i ≤ k
-      let b = undefined // todo: b = max{mark(u_i) | 1 ≤ i ≤ k}
-      if (b === 0) return null // UNSAT
-      // todo: remove all u from V and θ with mark(u) ≥ b
-      cnf.push(conflict_clause)
+      // determine cut in G and conflict clause K (terminology is a bit misleading here, K != conflict.clause)
+      let new_clause = implication_graph.cut(conflict)
+      let max_level = max(...new_clause.map(node => implication_graph.nodes.get(node)))
+      if (max_level === 0) return null // UNSAT
+      // remove all u from V and θ with mark(u) ≥ b
+      for (let [node, level] of implication_graph.nodes) {
+        if (level >= max_level) {
+          implication_graph.nodes.delete(node)
+          for (let [from, to] of implication_graph.edges) {
+            if (node === from || node === to) implication_graph.edges.delete(from)
+          }
+        }
+      }
+      cnf.push(new_clause) // learn as new clause
       level--
     }
     level++

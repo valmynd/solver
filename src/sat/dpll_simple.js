@@ -15,7 +15,7 @@
 // - DPLL divides the problem into sub-problems, one where the latest assumption holds and one where it does not
 
 /**
- * remove clauses in cnf where chosen is positive
+ * remove clauses that contain chosen
  * remove -chosen from clauses where it appears
  * return new cnf
  * @param {int[][]} cnf
