@@ -16,7 +16,7 @@ const _or_op = (a, b) => a || b
  * Two Tables
  *  M: n -> (v,l,r) maps a node n to its three attributes var(n)=v, left(n)=l, right(n)=r
  *  R: (v,l,r) -> n to enable reverse-lookup
- *
+ *  // idea: I: n_out -> n_in maps nodes to their respective predecessors
  */
 export class ROBDD {
   /**
@@ -33,11 +33,6 @@ export class ROBDD {
       "T|T|T": 1  // terminal 1
     }
     this.size = 0 // gets incremented for every created node; for now we have two terminal nodes (+2 in _mk())
-    /*let or_nodes = cnf.map(clause => this.or(...clause.map(atom => {
-     if (atom > 0) return this._mk(atom, 0, 1)
-     else return this._mk(abs(atom), 1, 0)
-     })))
-     if (cnf.length > 1) this.and(...or_nodes)*/
   }
 
   /**
@@ -88,9 +83,7 @@ export class ROBDD {
    * @param {...int} [more]
    * @returns {int}
    */
-  _apply(op, n1, n2, ...more) {
-    if (n1 === undefined) return 0
-    if (n2 === undefined) return this._mk(n1)
+  _apply(op, n1 = 0, n2 = 0, ...more) {
     let n, n1n = this.m[n1], n2n = this.m[n2]
     let cmp = this._compare(n1n[0], n2n[0])
     if (isTerminal(n1) && isTerminal(n2)) {
@@ -103,7 +96,7 @@ export class ROBDD {
       n = this._mk(n2n[0],
         this._apply(op, n1, n2n[1]),
         this._apply(op, n1, n2n[2]))
-    } else if (cmp === 0) { // n1n[0] === n2n[0]
+    } else if (cmp === 0 || n1n[0] === n2n[0]) { // cmp===0 // n1n[0] === n2n[0]
       n = this._mk(n1n[0],
         this._apply(op, n1n[1], n2n[1]),
         this._apply(op, n1n[2], n2n[2]))
@@ -117,7 +110,7 @@ export class ROBDD {
         this._apply(op, n1, n2n[2]))
     }
     if (more.length === 0) return n
-    else return this._apply(op, n, more.shift(), ...more)
+    return this._apply(op, n, more.shift(), ...more)
   }
 
   and(...operands) {
