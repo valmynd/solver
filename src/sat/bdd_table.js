@@ -3,6 +3,8 @@ const isTerminal = (n) => n === 0 || n === 1
 const abs = Math.abs
 const _and_op = (a, b) => a && b
 const _or_op = (a, b) => a || b
+const _xor_op = (a, b) => a !== b
+const _eq_op = (a, b) => a === b
 
 /**
  * Ordered and Reduced Binary Decision Diagram (ROBDD)
@@ -13,10 +15,10 @@ const _or_op = (a, b) => a || b
  * ---------------------
  * Nodes are represented as numbers 0,1,... with 0 and 1 reserved for the terminal nodes
  * Variables in the ordering x1 < x2 < ... xk are represented by their indices 1,2,...,k
- * Two Tables
+ * Three Tables
  *  M: n -> (v,l,r) maps a node n to its three attributes var(n)=v, left(n)=l, right(n)=r
  *  R: (v,l,r) -> n to enable reverse-lookup
- *  // idea: I: n_out -> n_in maps nodes to their respective predecessors
+ *  P: n_out -> [n_in] maps nodes to their respective predecessors
  */
 export class ROBDD {
   /**
@@ -32,6 +34,7 @@ export class ROBDD {
       "F|F|F": 0, // terminal 0
       "T|T|T": 1  // terminal 1
     }
+    this.p = {} // n_out -> [n_in] (enable reconstruction of paths from terminal 1 to solutions)
     this.size = 0 // gets incremented for every created node; for now we have two terminal nodes (+2 in _mk())
   }
 
@@ -55,7 +58,26 @@ export class ROBDD {
     let n = 2 + this.size++
     this.m[n] = [v, l, r]
     this.r[key] = n
+    this._store_predecessor(l, v, n)
+    this._store_predecessor(r, v, n)
     return n
+  }
+
+  /**
+   * store predecessor if it actually is a predecessor
+   * @param {int} lr (either l or r in M: n -> (v,l,r))
+   * @param {int} v (v in M: n -> (v,l,r))
+   * @param {int} n (n in M: n -> (v,l,r))
+   */
+  _store_predecessor(lr, v, n) {
+    let doStore = false, o = this.order
+    if (lr === 1) doStore = (v === o[o.length - 1]) // variable is the last one in the list of ordered variables
+    else if (lr !== 0) doStore = (o.indexOf(this.m[lr][0]) === o.indexOf(v) + 1) // the variable is the previous one
+    if (doStore) {
+      let predecessors = this.p[lr]
+      if (predecessors === undefined) this.p[lr] = [n]
+      else predecessors.push(n)
+    }
   }
 
   /**
@@ -84,52 +106,82 @@ export class ROBDD {
    * @returns {int}
    */
   _apply(op, n1 = 0, n2 = 0, ...more) {
-    let n, n1n = this.m[n1], n2n = this.m[n2]
-    let cmp = this._compare(n1n[0], n2n[0])
+    let n, [v1, l1, r1] = this.m[n1], [v2, l2, r2] = this.m[n2]
+    let cmp = this._compare(v1, v2)
     if (isTerminal(n1) && isTerminal(n2)) {
       n = op(n1, n2)
     } else if (!isTerminal(n1) && isTerminal(n2)) {
-      n = this._mk(n1n[0],
-        this._apply(op, n1n[1], n2),
-        this._apply(op, n1n[2], n2))
+      n = this._mk(v1,
+        this._apply(op, l1, n2),
+        this._apply(op, r1, n2))
     } else if (isTerminal(n1) && !isTerminal(n2)) {
-      n = this._mk(n2n[0],
-        this._apply(op, n1, n2n[1]),
-        this._apply(op, n1, n2n[2]))
-    } else if (cmp === 0 || n1n[0] === n2n[0]) { // cmp===0 // n1n[0] === n2n[0]
-      n = this._mk(n1n[0],
-        this._apply(op, n1n[1], n2n[1]),
-        this._apply(op, n1n[2], n2n[2]))
-    } else if (cmp === -1) { // n1n[0] < n2n[0]
-      n = this._mk(n1n[0],
-        this._apply(op, n1n[1], n2),
-        this._apply(op, n1n[2], n2))
-    } else { // cmp === 1 // n1n[0] > n2n[0]
-      n = this._mk(n2n[0],
-        this._apply(op, n1, n2n[1]),
-        this._apply(op, n1, n2n[2]))
+      n = this._mk(v2,
+        this._apply(op, n1, l2),
+        this._apply(op, n1, r2))
+    } else if (cmp === 0 || v1 === v2) { // cmp===0 // v1 === v2
+      n = this._mk(v1,
+        this._apply(op, l1, l2),
+        this._apply(op, r1, r2))
+    } else if (cmp === -1) { // v1 < v2
+      n = this._mk(v1,
+        this._apply(op, l1, n2),
+        this._apply(op, r1, n2))
+    } else { // cmp === 1 // v1 > v2
+      n = this._mk(v2,
+        this._apply(op, n1, l2),
+        this._apply(op, n1, r2))
     }
     if (more.length === 0) return n
     return this._apply(op, n, more.shift(), ...more)
   }
 
-  and(...operands) {
-    let ret = this._apply(_and_op, ...operands)
-    console.log("and called with", operands, "return", ret)
-    return ret
+  and(...operands) { // a ∧ b
+    if (operands.length === 1) operands[1] = 1 // thus and(or(1,-1)) should compute the same as or(1,-1)
+    return this._apply(_and_op, ...operands)
   }
 
-  or(...operands) {
-    let ret = this._apply(_or_op, ...operands)
-    console.log("or called with", operands, "return", ret)
-    return ret
+  or(...operands) { // a ∨ b
+    return this._apply(_or_op, ...operands)
+  }
+
+  xor(...operands) { // a ⊕ b
+    return this._apply(_xor_op, ...operands)
+  }
+
+  not(a) { // ¬a
+    if (a === 0) return 1
+    if (a === 1) return 0
+    let [v, l, r] = this.m[a]
+    return this._mk(v, this.not(l), this.not(r))
+  }
+
+  implies(a, b) { // (a → b)
+    return this.or(this.not(a), b) // a → b ≡ ¬a ∨ b
+  }
+
+  eq(a, b) { // a ↔ b
+    return this.and(this.implies(a, b), this.implies(b, a))
+    //return this._apply(_eq_op, a, b)
+  }
+
+  /**
+   * insert formula in Conjunctive Normal Form (CNF) into the BDD
+   * @param {int[][]} cnf
+   * @returns {int}
+   */
+  cnf(cnf) {
+    return this.and(...cnf.map(clause => this.or(...clause.map(atom => this._mk(atom)))))
   }
 }
 
-export function cnf2bdd(cnf, order = _collect_variables(cnf)) {
-  let bdd = new ROBDD(order)
-  bdd.and(...cnf.map(clause => bdd.or(...clause.map(atom => bdd._mk(atom)))))
-  return bdd
+/**
+ * Determine whether the formula is satisfiable
+ * @param {int[][]} cnf
+ * @returns {boolean}
+ */
+export function satisfiable(cnf) {
+  let bdd = new ROBDD(_collect_variables(cnf))
+  return bdd.cnf(cnf) !== 0
 }
 
 /**
@@ -140,13 +192,17 @@ export function cnf2bdd(cnf, order = _collect_variables(cnf)) {
  * @returns {int[]}
  */
 export function solve(cnf) {
-  let bdd = cnf2bdd(cnf)
-  let model = []
-  let [v, l, r] = bdd.m[2]
-  if (r === 1) {
-
+  let bdd = new ROBDD(_collect_variables(cnf))
+  bdd.cnf(cnf)
+  if (bdd.p[1] === undefined) return null
+  let model = [], n = 1, predecessors
+  while (predecessors = bdd.p[n]) {
+    let [v, l, r] = bdd.m[predecessors[0]]
+    if (n === r) model.push(v)
+    if (n === l) model.push(-v)
+    n = predecessors[0]
   }
-  //return
+  return model
 }
 
 /**
@@ -157,13 +213,4 @@ export function solve(cnf) {
  * @returns {int[][]}
  */
 export function solveAll(cnf) {
-}
-
-/**
- * Determine whether the formula is satisfiable
- * @param {int[][]} cnf
- * @returns {boolean}
- */
-export function satisfiable(cnf) {
-  return solve(cnf) !== null
 }
