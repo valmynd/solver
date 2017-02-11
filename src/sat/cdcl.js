@@ -1,9 +1,8 @@
-import {_simplify} from "./dpll_simple"
-import {_unit, _conflicting, _map2array} from "./dpll_verbose"
+import {_unit, _conflicting} from "./dpll_verbose"
 import {_collect_variables} from "./truthtable"
+import {assignment2array} from "../utils"
 const abs = Math.abs
 const max = Math.max
-const min = Math.min
 const empty = new Set()
 
 /**
@@ -143,6 +142,7 @@ export function solve(cnf) {
       // remove all u from V and θ with mark(u) ≥ b
       for (let [node, level] of implication_graph.nodes) {
         if (level >= max_level) {
+          assignment.delete(abs(node))
           implication_graph.nodes.delete(node)
           for (let [from, to] of implication_graph.edges) {
             if (node === from || node === to) implication_graph.edges.delete(from)
@@ -154,7 +154,7 @@ export function solve(cnf) {
     }
     level++
   }
-  return _map2array(assignment)
+  return assignment2array(assignment)
 }
 
 export function satisfiable(cnf) {

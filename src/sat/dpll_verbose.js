@@ -1,6 +1,6 @@
 import {_collect_variables} from "./truthtable"
+import {assignment2array} from "../utils"
 const abs = Math.abs
-export const _map2array = (assignment) => [...assignment.keys()].map(k => (assignment.get(k) === 1) ? k : -k)
 
 // Terminology
 //- a Clause c is for a partial assignment b {(x1,1),(x3,0)} ...
@@ -109,7 +109,7 @@ export function solve(cnf, assignment = new Map(), stack = _collect_variables(cn
     }
   }
   if (conflict_clause === null) { // (success)
-    return _map2array(assignment) // SAT
+    return assignment2array(assignment) // SAT
   } else {
     if (unit_clause !== null) { // (propagate)
       return solve(cnf, assignment.set(unit_literal, 1), stack) // could also set it to 0
