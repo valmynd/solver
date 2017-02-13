@@ -1,6 +1,6 @@
 import test from "ava"
 import {isModel} from "../dist/utils"
-import {ROBDD, satisfiable, solve} from "../dist/sat/bdd_table"
+import {ROBDD, satisfiable, solve} from "../dist/sat/bdd"
 
 test('ROBDD: and(or(a,b)) should return the same as or(a,b)', t => {
   let bdd1 = new ROBDD([1]), bdd2 = new ROBDD([1])

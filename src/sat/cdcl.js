@@ -1,6 +1,5 @@
 import {_unit, _conflicting} from "./dpll_verbose"
-import {_collect_variables} from "./truthtable"
-import {assignment2array} from "../utils"
+import {assignment2array, _collect_variables} from "../utils"
 const abs = Math.abs
 const max = Math.max
 const empty = new Set()

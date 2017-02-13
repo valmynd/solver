@@ -1,5 +1,5 @@
 import test from "ava"
-import {isModel, assignment2map} from "../dist/utils"
+import {isModel, assignment2map, equivalent} from "../dist/utils"
 import {_find_conflict} from "../dist/sat/cdcl"
 
 test('isModel() works correctly', t => {
@@ -12,4 +12,13 @@ test('isModel() works correctly', t => {
   model = [-1, -2, -4, -7, -8, 9]
   model_as_map = assignment2map(model)
   t.true(_find_conflict(cnf, model_as_map) === null)
+})
+
+test.skip('equivalent() works correctly', t => {
+  t.true(equivalent([[1, 2]], [[2, 1]]))
+  t.false(equivalent([[1, 2, 3]], [[2, 1]]))
+  t.is(
+    equivalent([[1, 2]], [[2, 1]]),
+    (solveAll([[1, 2]]).toString() === solveAll([[2, 1]]).toString())
+  )
 })

@@ -1,15 +1,4 @@
-// TODO: read Towards Next Generation Sequential and Parallel SAT Solvers
-// TODO: read Equisatisfiable SAT Encodings of Arithmetical Operations
-
-/**
- * @param {int[][]} cnf
- * @returns {int[]}
- */
-export function _collect_variables(cnf) {
-  let variables = new Set()
-  cnf.forEach(clause => clause.forEach(atom => variables.add(Math.abs(atom))))
-  return [...variables].sort()
-}
+import {_collect_variables} from "../utils"
 
 /**
  * Generate Combinations (usually the first Columns of a Truth Table)
@@ -18,11 +7,11 @@ export function _collect_variables(cnf) {
  * @param {int[]} variables
  * @returns {int[][]}
  */
-function _generate_combinations(variables) {
-  let pad = (new Array(variables.length + 1).join("0")),
+export function _generate_combinations(variables) {
+  let pad = (new Int8Array(variables.length + 1).join("")), // Int8Array by default gets initialized with zeroes
     combinations = new Array(Math.pow(2, variables.length))
   for (let i = 0; i < combinations.length; i++) {
-    let b = i.toString(2), s = pad.substring(0, pad.length - b.length) + b
+    let b = i.toString(2), s = pad.substring(0, pad.length - b.length) + b // prepend string with leading zeroes
     combinations[i] = [...s].map(char => parseInt(char))
   }
   return combinations
@@ -38,7 +27,7 @@ function _generate_combinations(variables) {
  * @param {int[]} values
  * @returns {int}
  */
-function _val(cnf, variables, values) {
+export function _val(cnf, variables, values) {
   for (let clause of cnf) {
     let v = false
     for (let atom of clause) {
@@ -59,22 +48,6 @@ function _val(cnf, variables, values) {
  */
 export function _rows(cnf, variables = _collect_variables(cnf)) {
   return _generate_combinations(variables).map(combination => [...combination, _val(cnf, variables, combination)])
-}
-
-/**
- * Checks two formulas for Equivalence
- * Two formulas are equivalent iff their sets of models are equal, e.g. Mod(F) = Mod(G)
- * @param {int[][]} cnf1
- * @param {int[][]} cnf2
- * @returns {boolean}
- */
-export function equivalent(cnf1, cnf2) {
-  let variables1 = _collect_variables(cnf1), variables2 = _collect_variables(cnf2)
-  if (variables1.toString() !== variables2.toString()) return false
-  let combinations = _generate_combinations(variables1)
-  let values1 = combinations.map(combination => _val(cnf1, variables1, combination))
-  let values2 = combinations.map(combination => _val(cnf2, variables1, combination))
-  return values1.toString() === values2.toString()
 }
 
 /**
@@ -110,17 +83,4 @@ export function solveAll(cnf) {
  */
 export function satisfiable(cnf) {
   return solve(cnf) !== null
-}
-
-/**
- * Checks two formulas for Equisatisfiability
- * Two Formulas F and G are equisatisfiable when ...
- *   ... either (1) Mod(F) = Ø ⇔ Mod(G) = Ø
- *   ... or     (2) Mod(F) ≠ Ø ⇔ Mod(G) ≠ Ø
- * @param {int[][]} cnf1
- * @param {int[][]} cnf2
- * @returns {boolean}
- */
-export function equisatisfiable(cnf1, cnf2) {
-  return satisfiable(cnf1) === satisfiable(cnf2)
 }

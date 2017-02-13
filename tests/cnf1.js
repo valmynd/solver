@@ -1,37 +1,61 @@
-import test from "ava";
-import {and, or, not, eq} from "../dist/normalforms/cnf_simple";
+import test from "ava"
+import {equivalent} from "../dist/utils"
+import {and, or, not, eq, implies} from "../dist/normalforms/cnf_simple";
 
+const P = 1, Q = 2, R = 3
 
-test('and() works correctly', t => {
-  t.deepEqual(and(1, 2), [[1], [2]])
-  t.deepEqual(and(1, or(2, 3)), [[1], [2, 3]])
-  t.deepEqual(and(1, and(2, 3)), [[1], [2], [3]])
-  t.deepEqual(and(1, 2, 3), [[1], [2], [3]])
+test('Commutativity', t => {
+  // (P ∨ Q) ↔ (Q ∨ P)
+  t.true(equivalent(
+    or(P, Q),
+    or(Q, P)
+  ))
+  // (P ∧ Q) ↔ (Q ∧ P)
+  t.true(equivalent(
+    and(P, Q),
+    and(Q, P)
+  ))
+  // (P ↔ Q) ↔ (Q ↔ P)
+  t.true(equivalent(
+    eq(P, Q),
+    eq(Q, P)
+  ))
+  // (P→(Q→R))↔(Q→(P→R))
+  t.true(equivalent(
+    implies(P, implies(Q, R)),
+    implies(Q, implies(P, R))
+  ))
 })
 
-test('or() works correctly', t => {
-  t.deepEqual(or(1, 2), [[1, 2]])
-  t.deepEqual(or(1, and(2, 3)), [[1, 2], [1, 3]])
-  t.deepEqual(or(and(1, 2), and(3, 4), and(5, 6, 7)), [
-    [1, 5], [3, 5], [1, 6], [3, 6], [1, 7], [3, 7], [1, 5], [4, 5], [1, 6], [4, 6],
-    [1, 7], [4, 7], [2, 5], [3, 5], [2, 6], [3, 6], [2, 7], [3, 7], [2, 5], [4, 5],
-    [2, 6], [4, 6], [2, 7], [4, 7]])
-  t.deepEqual(or(and(1, 2, 3, 4), and(5, 6, 7, 8)), [[1, 5], [1, 6], [1, 7], [1, 8],
-    [2, 5], [2, 6], [2, 7], [2, 8], [3, 5], [3, 6], [3, 7], [3, 8], [4, 5], [4, 6],
-    [4, 7], [4, 8]])
-  t.deepEqual(or(and(1, 2), 3), [[3, 1], [3, 2]])
+test('Associativity', t => {
+  // ((P ∨ Q) ∨ R) ↔ (P ∨ (Q ∨ R))
+  t.true(equivalent(
+    or(or(P, Q), R),
+    or(P, or(Q, R))
+  ))
+  // ((P ∧ Q) ∧ R) ↔ (P ∧ (Q ∧ R))
+  t.true(equivalent(
+    and(and(P, Q), R),
+    and(P, and(Q, R))
+  ))
+  // ((P ↔ Q) ↔ R) ↔ (P ↔ (Q ↔ R))
+  /*t.true(equivalent(
+    eq(eq(P, Q), R),
+    eq(P, eq(Q, R))
+  ))*/ // FIXME
+  console.log("eq(P, eq(Q, R))", eq(P, eq(Q, R)))
+  console.log("eq(eq(P, Q), R)", eq(eq(P, Q), R))
 })
 
-
-test('not() works correctly', t => {
-  t.deepEqual(not(1), [[-1]])
-  t.deepEqual(not(or(1, 2)), [[-1], [-2]])
-  t.deepEqual(not(and(1, 2)), [[-1, -2]])
-  t.deepEqual(not(and(or(1, 2), or(3, 4))), [[-1, -3], [-1, -4], [-2, -3], [-2, -4]])
-})
-
-test('eq() works correctly', t => {
-  //console.log(eq(3, or(1, 2)))
-  //t.deepEqual(eq(3, or(1, 2)), [[-3, 1, 2], [3, -1], [3, -2]])
-  t.deepEqual(eq(3, or(1, 2)), [[-3, 1], [-3, 2], [3, -1], [3, -2]]) // FIXME: should be simplified as above
+test.skip('Distributivity', t => {
+  // (P ∨ (Q ∧ R)) ⇔ ((P ∨ Q) ∧ (P ∨ R))
+  t.true(equivalent(
+    or(P, and(Q, R)),
+    and(or(P, Q), or(P, R))
+  ))
+  // (P ∧ (Q ∨ R)) ↔ ((P ∧ Q) ∨ (P ∧ R))
+  t.true(equivalent(
+    and(P, or(Q, R)),
+    or(and(P, Q), and(P, R))
+  ))
 })

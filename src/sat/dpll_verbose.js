@@ -1,5 +1,4 @@
-import {_collect_variables} from "./truthtable"
-import {assignment2array} from "../utils"
+import {assignment2array, _collect_variables} from "../utils"
 const abs = Math.abs
 
 // Terminology

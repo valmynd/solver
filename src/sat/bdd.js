@@ -1,137 +1,216 @@
-/**
- * Node of an Ordered and Reduced Binary Decision Diagram (ROBDD)
- */
-class BDDNode {
-  /**
-   * @param {BDD} bdd
-   * @param {int} variable
-   * @param {BDDNode} out0
-   * @param {BDDNode} out1
-   */
-  constructor(bdd, variable, out0, out1) {
-    this.bdd = bdd // instance of BDD
-    this.v = variable // variable, e.g. 1 for x1 and ¬x1
-    this.in = [] // incoming edges
-    this.out0 = out0 // outgoing edge for case 0
-    this.out1 = out1 // outgoing edge for case 1
-  }
-
-  /**
-   * Returns whether the Node represents either terminal 0 or terminal 1
-   * @returns {boolean}
-   */
-  isTerminal() {
-    return this === this.bdd.T || this === this.bdd.F
-  }
-}
+import {_collect_variables} from "../utils"
+const isTerminal = (n) => n === 0 || n === 1
+const abs = Math.abs
+const _and_op = (a, b) => a && b
+const _or_op = (a, b) => a || b
+const _xor_op = (a, b) => a !== b
+const _eq_op = (a, b) => a === b
 
 /**
  * Ordered and Reduced Binary Decision Diagram (ROBDD)
- * - (ordered) on all paths through the graph the variables respect a given linear order (e.g. x1 < x2 < ... < x10)
- * - (reduced) if
- *    - ∀v ∈ V: s(v) = (l,x,r) ⇒ l≠r
- *    - ∀v,w ∈ V: s(v) = s(w) ⇒ v=w
+ * - (ordered) on all paths through the graph the variables respect a given linear order (e.g. x1 < x2 < ... < xk)
+ * - (reduced) by enforcing the following rules:
+ *    (1) ∀v ∈ V: s(v) = (v,l,r) ⇒ l ≠ r    // the left and right child of a node can't be identical
+ *    (2) ∀v,w ∈ V: s(v) = s(w) ⇒ v = w     // nodes must be unique (e.g. (v=1,l=1,r=1) must not exist more than once)
  * ---------------------
- * Nodes will be represented as numbers 0,1,... with 0 and 1 reserved for the terminal nodes
- * Variables in the ordering x1 < x2 < ... xn are represented by their indices 1,2,...n
- * Two Tables
- *  T: u -> (v,l,r) which maps a node u to its three attributes var(u)=v, left(u)=l, right(u)=r
- *  H: (v,l,r) -> u to enable reverse-lookup
- *
+ * Nodes are represented as numbers 0,1,... with 0 and 1 reserved for the terminal nodes
+ * Variables in the ordering x1 < x2 < ... xk are represented by their indices 1,2,...,k
+ * Three Tables
+ *  M: n -> (v,l,r) maps a node-id n to its three attributes var(n)=v, left(n)=l, right(n)=r
+ *  R: (v,l,r) -> n to enable reverse-lookup
+ *  P: n_out -> [n_in] maps nodes to their respective predecessors
  */
-class BDD {
-  constructor(cnf) {
-    this.size = 0
-    this.T = new BDDNode(this, +Infinity, null, null) // terminal 1
-    this.F = new BDDNode(this, -Infinity, null, null) // terminal 0
-    this.cache = new Map()
+export class ROBDD {
+  /**
+   * @param {int[]} variables_in_order
+   */
+  constructor(variables_in_order) {
+    this.order = variables_in_order
+    this.m = { // n -> (v,l,r)
+      0: ["F", "F", "F"], // terminal 0
+      1: ["T", "T", "T"]  // terminal 1
+    }
+    this.r = { // (v,l,r) -> n
+      "F|F|F": 0, // terminal 0
+      "T|T|T": 1  // terminal 1
+    }
+    this.p = {} // n_out -> [n_in] (enable reconstruction of paths from terminal 1 to solutions)
+    this.size = 0 // gets incremented for every created node; for now we have two terminal nodes (+2 in _mk())
   }
 
   /**
-   * Create BDDNode Node
+   * Create a BDD Node
    * @param {int} v
-   * @param {BDDNode} [out0]
-   * @param {BDDNode} [out1]
-   * @returns {BDDNode}
+   * @param {int} l
+   * @param {int} r
+   * @returns {int}
    */
-  addNode(v, out0 = this.bdd.F, out1 = this.bdd.T) {
-    if (out0 === out1) return out0 // (uniqueness)
-    //if(this.cache.has())
+  _mk(v, l = 0, r = 1) {
+    if (l === r) return l
+    if (v < 0) {
+      v = abs(v)
+      let tmp = l
+      l = r
+      r = tmp
+    }
+    let key = v + "|" + l + "|" + r, existing = this.r[key]
+    if (existing !== undefined) return existing
+    let n = 2 + this.size++
+    this.m[n] = [v, l, r]
+    this.r[key] = n
+    this._store_predecessor(l, v, n)
+    this._store_predecessor(r, v, n)
+    return n
+  }
+
+  /**
+   * store predecessor if it actually is a predecessor
+   * @param {int} lr (either l or r in M: n -> (v,l,r))
+   * @param {int} v (v in M: n -> (v,l,r))
+   * @param {int} n (n in M: n -> (v,l,r))
+   */
+  _store_predecessor(lr, v, n) {
+    let doStore = false, o = this.order
+    if (lr === 1) doStore = (v === o[o.length - 1]) // variable is the last one in the list of ordered variables
+    else if (lr !== 0) doStore = (o.indexOf(this.m[lr][0]) === o.indexOf(v) + 1) // the variable is the previous one
+    if (doStore) {
+      let predecessors = this.p[lr]
+      if (predecessors === undefined) this.p[lr] = [n]
+      else predecessors.push(n)
+    }
+  }
+
+  /**
+   * returns -1 if the first variable comes before the second variable
+   * returns +1 if the first variable comes after the second variable
+   * returns 0 if both variables are equivalent (or not variables at all)
+   * @param {int} v1
+   * @param {int} v2
+   * @returns {int}
+   */
+  _compare(v1, v2) {
+    let i1 = this.order.indexOf(v1)
+    let i2 = this.order.indexOf(v2)
+    if (i1 < i2) return -1
+    if (i1 > i2) return 1
+    else return 0
+  }
+
+  /**
+   * Apply custom operator (given by a JS-Function)
+   * Based on Shannon Expansion
+   * @param {function} op
+   * @param {int} n1
+   * @param {int} n2
+   * @param {...int} [more]
+   * @returns {int}
+   */
+  _apply(op, n1 = 0, n2 = 0, ...more) {
+    let n, [v1, l1, r1] = this.m[n1], [v2, l2, r2] = this.m[n2]
+    let cmp = this._compare(v1, v2)
+    if (isTerminal(n1) && isTerminal(n2)) {
+      n = op(n1, n2) ? 1 : 0
+    } else if (!isTerminal(n1) && isTerminal(n2)) {
+      n = this._mk(v1,
+        this._apply(op, l1, n2),
+        this._apply(op, r1, n2))
+    } else if (isTerminal(n1) && !isTerminal(n2)) {
+      n = this._mk(v2,
+        this._apply(op, n1, l2),
+        this._apply(op, n1, r2))
+    } else if (cmp === 0 || v1 === v2) { // cmp===0 // v1 === v2
+      n = this._mk(v1,
+        this._apply(op, l1, l2),
+        this._apply(op, r1, r2))
+    } else if (cmp === -1) { // v1 < v2
+      n = this._mk(v1,
+        this._apply(op, l1, n2),
+        this._apply(op, r1, n2))
+    } else { // cmp === 1 // v1 > v2
+      n = this._mk(v2,
+        this._apply(op, n1, l2),
+        this._apply(op, n1, r2))
+    }
+    if (more.length === 0) return n
+    return this._apply(op, n, more.shift(), ...more)
+  }
+
+  and(...operands) { // a ∧ b
+    if (operands.length === 1) operands[1] = 1 // thus and(or(1,-1)) should compute the same as or(1,-1)
+    return this._apply(_and_op, ...operands)
+  }
+
+  or(...operands) { // a ∨ b
+    return this._apply(_or_op, ...operands)
+  }
+
+  xor(...operands) { // a ⊕ b
+    return this._apply(_xor_op, ...operands)
+  }
+
+  not(a) { // ¬a
+    if (a === 0) return 1
+    if (a === 1) return 0
+    let [v, l, r] = this.m[a]
+    return this._mk(v, this.not(l), this.not(r))
+  }
+
+  implies(a, b) { // (a → b)
+    return this.or(this.not(a), b) // a → b ≡ ¬a ∨ b
+  }
+
+  eq(a, b) { // a ↔ b
+    return this.and(this.implies(a, b), this.implies(b, a))
+    //return this._apply(_eq_op, a, b)
+  }
+
+  /**
+   * insert formula in Conjunctive Normal Form (CNF) into the BDD
+   * @param {int[][]} cnf
+   * @returns {int}
+   */
+  cnf(cnf) {
+    return this.and(...cnf.map(clause => this.or(...clause.map(atom => this._mk(atom)))))
   }
 }
 
 /**
- * Conjunction (a ∧ b)
- * @param {BDDNode} a
- * @param {BDDNode} b
- * @param {...BDDNode} [more]
- * @returns {BDDNode}
- */
-export function and(a, b, ...more) {
-  let ret
-  if (a === b) {
-    ret = a
-  } else if (a === FALSE || b === FALSE) {
-    ret = FALSE
-  } else if (a === TRUE) {
-    ret = b
-  } else if (b === TRUE) {
-    ret = a
-  } else if (a.v === b.v) {
-    ret = make(a.v, and(a.out0, b.out0), and(a.out1, b.out1))
-  } else if (a.v < b.v) {
-    ret = make(a.v, and(a.out0, b), and(a.out1, b))
-  } else { // a.v > b.v
-    ret = make(b.v, and(a, b.out0), and(a, b.out1))
-  }
-  if (more.vength > 0) {
-    return and(ret, more.shift(), ...more)
-  }
-  return ret
-}
-
-
-/**
- * Disjunction (a ∨ b)
- * @param {BDDNode} a
- * @param {BDDNode} b
- * @param {...BDDNode} [more]
- * @returns {BDDNode}
- */
-export function or(a, b, ...more) {
-  let ret
-  if (a === b) {
-    ret = a
-  } else if (a === TRUE || b === TRUE) {
-    ret = TRUE
-  } else if (a === FALSE) {
-    ret = b
-  } else if (b === FALSE) {
-    ret = a
-  } else if (a.v === b.v) {
-    ret = make(a.v, or(a.out0, b.out0), or(a.out1, b.out1))
-  } else if (a.v < b.v) {
-    ret = make(a.v, or(a.out0, b), or(a.out1, b))
-  } else { // a.v > b.v
-    ret = make(b.v, or(a, b.out0), or(a, b.out1))
-  }
-  if (more.vength === 0) return ret
-  else return or(ret, ...more)
-}
-
-/**
- * Determine whether the formulae is satisfiable
+ * Determine whether the formula is satisfiable
+ * @param {int[][]} cnf
  * @returns {boolean}
  */
-export function satisfiable() {
-  return TRUE.in.length > 0 // problematic when reusing TRUE and FALSE
+export function satisfiable(cnf) {
+  let bdd = new ROBDD(_collect_variables(cnf))
+  return bdd.cnf(cnf) !== 0
 }
 
 /**
- * finds all satisfying truth-assignments leaving out irrelevant variables
- * algorithm: find all paths from a node to the terminal 1
- * @returns {Array}
+ * Returns one model when the formula is satisfiable
+ * Input: formula in Conjunctive Normal Form (CNF) with each variable being represented as an integer
+ * Output: model represented as an array of true-assigned variables or null if unsatisfiable
+ * @param {int[][]} cnf
+ * @returns {int[]}
  */
-export function solve() {
+export function solve(cnf) {
+  let bdd = new ROBDD(_collect_variables(cnf))
+  bdd.cnf(cnf)
+  if (bdd.p[1] === undefined) return null
+  let model = [], n = 1, predecessors
+  while (predecessors = bdd.p[n]) {
+    let [v, l, r] = bdd.m[predecessors[0]]
+    if (n === r) model.push(v)
+    if (n === l) model.push(-v)
+    n = predecessors[0]
+  }
+  return model
+}
 
+/**
+ * Returns all models when the formula is satisfiable
+ * Input: formula in Conjunctive Normal Form (CNF) with each variable being represented as an integer
+ * Output: array of models represented as arrays of true-assigned variables (empty if unsatisfiable)
+ * @param {int[][]} cnf
+ * @returns {int[][]}
+ */
+export function solveAll(cnf) {
 }

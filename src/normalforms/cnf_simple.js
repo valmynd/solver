@@ -1,6 +1,5 @@
 const isInt = Number.isInteger
 const isArray = Array.isArray
-const str = json => JSON.stringify(json)
 
 /**
  * Conjunction (a ∧ b)
@@ -8,18 +7,18 @@ const str = json => JSON.stringify(json)
  *  and(1,2)        // [[1],[2]]
  *  and(1,or(2,3))  // [[1],[2,3]]
  *  and(1,and(2,3))  // [[1],[2],[3]]
- * @param {...int|int[][]} args
+ * @param {...int|int[][]} operands
  * @returns {int[][]}
  */
-export function and(...args) {
+export function and(...operands) {
   let cnf = []
-  for (let arg of args) {
-    if (isInt(arg)) {
-      cnf.push([arg])
-    } else if (isArray(arg)) {
-      cnf = [...cnf, ...arg]
+  for (let operand of operands) {
+    if (isInt(operand)) {
+      cnf.push([operand])
+    } else if (isArray(operand)) {
+      cnf.push(...operand)
     } else {
-      throw "Invalid argument for and(): " + arg
+      throw "Invalid argument for and(): " + operand
     }
   }
   return cnf
@@ -34,36 +33,41 @@ export function and(...args) {
  *  or(1,2)         // [[1,2]]
  *  or(1,and(2,3))  // [[1,2],[1,3]]
  *  or(and(1,2), and(3,4), and(5,6,7))
- * @param {...int|int[][]} args
+ * @param {...int|int[][]} operands
  * @returns {int[][]}
  */
-export function or(...args) {
-  let integers = [], arrays = []
-  for (let arg of args) {
-    if (isInt(arg)) {
-      integers.push(arg)
-    } else if (isArray(arg)) {
-      arrays.push(arg)
+export function or(...operands) {
+  let clause1 = [], remaining = []
+  for (let operand of operands) {
+    if (isInt(operand)) {
+      clause1.push(operand)
+    } else if (isArray(operand)) {
+      if (operand.length === 1) {
+        clause1.push(...operand[0])
+      } else {
+        remaining.push(...operand)
+      }
     } else {
-      throw "Invalid argument for or(): " + arg
+      throw "Invalid argument for or(): " + operand
     }
   }
-  if (arrays.length == 0) return (integers.length === 0) ? [] : [integers]
-  else if (integers.length > 0) arrays = [[integers], ...arrays]
-  let [a, b, ...more] = arrays
-  //console.log("args", str(args), "arrays", str(arrays), "abmore", str(a), str(b), str(more))
+  if (clause1.length === 0) {
+    clause1 = remaining.shift()
+  }
+  if (remaining.length === 0) {
+    return [clause1]
+  }
+  // (p1 ∧ p2) ∨ (q1 ∧ q2) ≡ (p1 ∨ q1) ∧ (p1 ∨ q2) ∧ (p2 ∨ q1) ∧ (p2 ∨ q2)
   let cnf = []
-  for (let clause_a of a) {
-    for (let clause_b of b) {
-      for (let atom_a of clause_a) {
-        for (let atom_b of clause_b) {
-          cnf.push([atom_a, atom_b])
-        }
+  for (let clause2 of remaining) {
+    for (let atom1 of clause1) {
+      for (let atom2 of clause2) {
+        if (atom1 === atom2) cnf.push([atom1])
+        else cnf.push([atom1, atom2])
       }
     }
   }
-  if (more.length === 0) return cnf
-  else return or(cnf, ...more)
+  return cnf
 }
 
 /**
