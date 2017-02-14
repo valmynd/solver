@@ -40,14 +40,14 @@ test('Associativity', t => {
   ))
   // ((P ↔ Q) ↔ R) ↔ (P ↔ (Q ↔ R))
   /*t.true(equivalent(
-    eq(eq(P, Q), R),
-    eq(P, eq(Q, R))
-  ))*/ // FIXME
-  console.log("eq(P, eq(Q, R))", eq(P, eq(Q, R)))
-  console.log("eq(eq(P, Q), R)", eq(eq(P, Q), R))
+   eq(eq(P, Q), R),
+   eq(P, eq(Q, R))
+   ))*/ // FIXME
+  //console.log("eq(P, eq(Q, R))", eq(P, eq(Q, R)))
+  //console.log("eq(eq(P, Q), R)", eq(eq(P, Q), R))
 })
 
-test.skip('Distributivity', t => {
+test('Distributivity', t => {
   // (P ∨ (Q ∧ R)) ⇔ ((P ∨ Q) ∧ (P ∨ R))
   t.true(equivalent(
     or(P, and(Q, R)),
@@ -58,4 +58,12 @@ test.skip('Distributivity', t => {
     and(P, or(Q, R)),
     or(and(P, Q), and(P, R))
   ))
+})
+
+
+test('Other', t => {
+  // a1 ∨ (b1 ∧ b2) ∨ (c1 ∧ c2)  ≡  (a1 ∨ b1 ∨ c1) ∧ (a1 ∨ b1 ∨ c2) ∧ (a1 ∨ b2 ∨ c1) ∧ (a1 ∨ b2 ∨ c2)
+  // a1 ∨ (a2 ∧ a3) ∨ (a4 ∧ a5)  ≡  (a1 ∨ a2 ∨ a4) ∧ (a1 ∨ a2 ∨ a5) ∧ (a1 ∨ a3 ∨ a4) ∧ (a1 ∨ a3 ∨ a5)
+  t.deepEqual(or(1, and(2, 3), and(4, 5)), [[1, 2, 4], [1, 2, 5], [1, 3, 4], [1, 3, 5]])
+  // a1 ∨ (b1 ∧ (c1 ∨ c2))  ≡  (a1 ∨ b1) ∧ (a1 ∨ c1 ∨ c2)
 })

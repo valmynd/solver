@@ -45,7 +45,7 @@ export function or(...operands) {
       if (operand.length === 1) {
         clause1.push(...operand[0])
       } else {
-        remaining.push(...operand)
+        remaining.push(operand)
       }
     } else {
       throw "Invalid argument for or(): " + operand
@@ -57,14 +57,32 @@ export function or(...operands) {
   if (remaining.length === 0) {
     return [clause1]
   }
-  // (p1 ∧ p2) ∨ (q1 ∧ q2) ≡ (p1 ∨ q1) ∧ (p1 ∨ q2) ∧ (p2 ∨ q1) ∧ (p2 ∨ q2)
   let cnf = []
-  for (let clause2 of remaining) {
-    for (let atom1 of clause1) {
-      for (let atom2 of clause2) {
-        if (atom1 === atom2) cnf.push([atom1])
-        else cnf.push([atom1, atom2])
-      }
+  for (let a in clause1) {
+    switch (remaining.length) {
+      case 1:
+        for (let fd in remaining) {
+          for (let cd in remaining[fd]) {
+            cnf.push([clause1[a], ...remaining[fd][cd]])
+          }
+        }
+        break
+      case 2:
+        for (let fu in remaining) {
+          for (let cu in remaining[fu]) {
+            for (let fd in remaining) {
+              if (fd < fu) break
+              for (let cd in remaining[fd]) {
+                if (fu !== fd) {
+                  cnf.push([clause1[a], ...remaining[fu][cu], ...remaining[fd][cd]])
+                }
+              }
+            }
+          }
+        }
+        break
+      default:
+        throw "Only up to 2 conjugated operands allowed for or()"
     }
   }
   return cnf
